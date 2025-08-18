@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const VERIFI_TOKEN = process.env.VERIFI_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFI_TOKEN;
 let getHomePage = (req,res) => {
     return res.send('Hello World!');
 
@@ -15,7 +15,7 @@ let getWebhook = (req,res) => {
     // Check if a token and mode is in the query string of the request
     if (mode && token) {
         // Check the mode and token sent is correct
-        if (mode === "subscribe" && token === VERIFI_TOKEN) {
+        if (mode === "subscribe" && token === VERIFY_TOKEN) {
             // Respond with the challenge token from the request
             console.log("WEBHOOK_VERIFIED");
             res.status(200).send(challenge);
