@@ -1,3 +1,4 @@
+const {request} = require("express");
 require('dotenv').config();
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
@@ -42,6 +43,13 @@ let postWebhook = (req,res) => {
             //get the sender PSID
             let sender_psid = webhook_event.sender.id;
             console.log('Sender PSID:'+ sender_psid);
+
+            if(webhook_event.message){
+                handleMessage(sender_psid, webhook_event.message);
+            }
+            else if(webhook_event.postback){
+                handlePostback(sender_psid, webhook_event.postback);
+            }
         })
     } else {
         res.sendStatus(404);
@@ -49,7 +57,14 @@ let postWebhook = (req,res) => {
 }
 // Handles messages events
 function handleMessage(sender_psid, received_message) {
-
+    let response;
+    if(received_message.text){
+        console.log("Received message:", received_message.text);
+        response={
+            "text": `You sent the message "${received_message.text}". Now send me an image!`
+        }
+    }
+    callSendAPI(sender_psid,response);
 }
 
 //Handles messaging_postbacks events
@@ -59,7 +74,25 @@ function handlePostback(sender_psid, received_postback) {
 
 //Sends response messages via the send API
 function callSendAPI(sender_psid, response) {
+    let request_body = {
+        "recipient":{
+            "id":sender_psid
+        },
+        "message": response
+    }
 
+    request({
+        "uri": "https://graph.facebook.com/v21.0/me/messages",
+        "qs": { "access_token": PAGE_ACCESS_TOKEN },
+        "method": "POST",
+        "json": request_body
+    }, (err, res, body) => {
+        if (!err) {
+            console.log('message sent!')
+        } else {
+            console.error("Unable to send message:" + err);
+        }
+    });
 }
 
 
