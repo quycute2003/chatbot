@@ -1,5 +1,4 @@
-
-import request from "request";
+import axios from "axios";
 require('dotenv').config();
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
@@ -74,26 +73,23 @@ function handlePostback(sender_psid, received_postback) {
 }
 
 //Sends response messages via the send API
-function callSendAPI(sender_psid, response) {
-    let request_body = {
-        "recipient":{
-            "id":sender_psid
-        },
-        "message": response
-    }
 
-    request({
-        "uri": "https://graph.facebook.com/v21.0/me/messages",
-        "qs": { "access_token": PAGE_ACCESS_TOKEN },
-        "method": "POST",
-        "json": request_body
-    }, (err, res, body) => {
-        if (!err) {
-            console.log('message sent!')
-        } else {
-            console.error("Unable to send message:" + err);
-        }
-    });
+
+async function callSendAPI(sender_psid, response) {
+    const request_body = {
+        recipient: { id: sender_psid },
+        message: response
+    };
+
+    try {
+        const res = await axios.post(
+            `https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+            request_body
+        );
+        console.log("Message sent!", res.data);
+    } catch (err) {
+        console.error("Unable to send message:", err.response?.data || err.message);
+    }
 }
 
 
