@@ -26,7 +26,7 @@ let getWebhook = (req,res) => {
         }
     }
 }
-let postWebhook = (req,res) => {
+let postWebhook = async (req,res) => {
     let body = req.body;
 
     console.log(`\u{1F7EA} Received webhook:`);
@@ -45,7 +45,7 @@ let postWebhook = (req,res) => {
             console.log('Sender PSID:'+ sender_psid);
 
             if(webhook_event.message){
-                handleMessage(sender_psid, webhook_event.message);
+                 handleMessage(sender_psid, webhook_event.message);
             }
             else if(webhook_event.postback){
                 handlePostback(sender_psid, webhook_event.postback);
@@ -56,7 +56,7 @@ let postWebhook = (req,res) => {
     }
 }
 // Handles messages events
-function handleMessage(sender_psid, received_message) {
+async function handleMessage(sender_psid, received_message) {
     let response;
     if(received_message.text){
         console.log("Received message:", received_message.text);
@@ -64,7 +64,9 @@ function handleMessage(sender_psid, received_message) {
             "text": `You sent the message "${received_message.text}". Now send me an image!`
         }
     }
-    callSendAPI(sender_psid,response);
+    if (response) {
+        await callSendAPI(sender_psid, response);
+    }
 }
 
 //Handles messaging_postbacks events
