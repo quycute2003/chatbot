@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFI_TOKEN;
+const CHAT_URL = "https://chatbot-qcgh.onrender.com/chat/send";
 
 let getHomePage = (req, res) => {
     return res.send("Hello World!");
@@ -35,12 +36,13 @@ let postWebhook = async (req, res) => {
         body.entry.forEach(entry => {
             entry.messaging.forEach(webhook_event => {
                 let sender_psid = webhook_event.sender.id;
-                console.log("Sender PSID:", sender_psid);
+                let page_id = entry.id;
+                console.log(`Sender: ${sender_psid} | Page: ${page_id}`);
 
                 if (webhook_event.message) {
-                    handleMessage(sender_psid, webhook_event.message);
+                    handleMessage(sender_psid, webhook_event.message, page_id);
                 } else if (webhook_event.postback) {
-                    handlePostback(sender_psid, webhook_event.postback);
+                    handlePostback(sender_psid, webhook_event.postback, page_id);
                 }
             });
         });
@@ -49,44 +51,44 @@ let postWebhook = async (req, res) => {
     }
 };
 
-async function handleMessage(sender_psid, received_message) {
+async function handleMessage(sender_psid, received_message, page_id) {
     if (received_message.text) {
         console.log("Received message:", received_message.text);
 
         try {
-            // Gửi tin nhắn sang API chatbot của bạn
-            const apiRes = await axios.post(
-                "https://chatbot-qcgh.onrender.com/chat/send",
-                {
-                    user_input: received_message.text,
-                    sender: sender_psid, // có thể truyền thêm để phân biệt user
-                }
-            );
+            // gọi API chatbot với format mới
+            const apiRes = await axios.post(CHAT_URL, {
+                user_input: received_message.text,
+            });
 
-            // Giả sử API trả về { reply: "..." }
-            const botReply = apiRes.data.reply || "Xin lỗi, tôi không hiểu.";
+            // áp dụng cấu trúc data như React code
+            const botReply =
+                apiRes.data?.data?.bot_reply || "❌ Không có phản hồi từ server";
 
             const response = {
                 text: botReply,
             };
 
-            await callSendAPI(sender_psid, response);
+            await callSendAPI(sender_psid, response, page_id);
         } catch (err) {
-            console.error("Error calling chatbot API:", err.response?.data || err.message);
+            console.error(
+                "Error calling chatbot API:",
+                err.response?.data || err.message
+            );
 
             const response = {
-                text: "⚠️ Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu.",
+                text: "❌ Lỗi kết nối server",
             };
-            await callSendAPI(sender_psid, response);
+            await callSendAPI(sender_psid, response, page_id);
         }
     }
 }
 
-function handlePostback(sender_psid, received_postback) {
-    // xử lý postback nếu có
+function handlePostback(sender_psid, received_postback, page_id) {
+    // xử lý postback nếu cần
 }
 
-async function callSendAPI(sender_psid, response) {
+async function callSendAPI(sender_psid, response, page_id) {
     const request_body = {
         recipient: { id: sender_psid },
         message: response,
