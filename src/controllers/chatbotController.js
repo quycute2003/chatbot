@@ -1,86 +1,95 @@
 import axios from "axios";
-require('dotenv').config();
+require("dotenv").config();
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = process.env.VERIFI_TOKEN;
-let getHomePage = (req,res) => {
-    return res.send('Hello World!');
 
-}
-let getWebhook = (req,res) => {
+let getHomePage = (req, res) => {
+    return res.send("Hello World!");
+};
 
+let getWebhook = (req, res) => {
     let mode = req.query["hub.mode"];
     let token = req.query["hub.verify_token"];
     let challenge = req.query["hub.challenge"];
 
-    // Check if a token and mode is in the query string of the request
     if (mode && token) {
-        // Check the mode and token sent is correct
         if (mode === "subscribe" && token === VERIFY_TOKEN) {
-            // Respond with the challenge token from the request
             console.log("WEBHOOK_VERIFIED");
             res.status(200).send(challenge);
         } else {
-            // Respond with '403 Forbidden' if verify tokens do not match
             res.sendStatus(403);
         }
     }
-}
-let postWebhook = async (req,res) => {
+};
+
+let postWebhook = async (req, res) => {
     let body = req.body;
 
     console.log(`\u{1F7EA} Received webhook:`);
     console.dir(body, { depth: null });
+
     if (body.object === "page") {
-        // Returns a '200 OK' response to all requests
         res.status(200).send("EVENT_RECEIVED");
-        // Determine which webhooks were triggered and get sender PSIDs and locale, message content and more.
+
         body.entry.forEach(entry => {
-            //gets the body of the webhook event
-            let webhook_event= entry.messaging[0];
-            console.log(webhook_event);
+            entry.messaging.forEach(webhook_event => {
+                let sender_psid = webhook_event.sender.id;
+                console.log("Sender PSID:", sender_psid);
 
-            //get the sender PSID
-            let sender_psid = webhook_event.sender.id;
-            console.log('Sender PSID:'+ sender_psid);
-
-            if(webhook_event.message){
-                 handleMessage(sender_psid, webhook_event.message);
-            }
-            else if(webhook_event.postback){
-                handlePostback(sender_psid, webhook_event.postback);
-            }
-        })
+                if (webhook_event.message) {
+                    handleMessage(sender_psid, webhook_event.message);
+                } else if (webhook_event.postback) {
+                    handlePostback(sender_psid, webhook_event.postback);
+                }
+            });
+        });
     } else {
         res.sendStatus(404);
     }
-}
-// Handles messages events
+};
+
 async function handleMessage(sender_psid, received_message) {
-    let response;
-    if(received_message.text){
+    if (received_message.text) {
         console.log("Received message:", received_message.text);
-        response={
-            "text": `You sent the message "${received_message.text}". Now send me an image!`
+
+        try {
+            // Gửi tin nhắn sang API chatbot của bạn
+            const apiRes = await axios.post(
+                "https://chatbot-qcgh.onrender.com/chat/send",
+                {
+                    user_input: received_message.text,
+                    sender: sender_psid, // có thể truyền thêm để phân biệt user
+                }
+            );
+
+            // Giả sử API trả về { reply: "..." }
+            const botReply = apiRes.data.reply || "Xin lỗi, tôi không hiểu.";
+
+            const response = {
+                text: botReply,
+            };
+
+            await callSendAPI(sender_psid, response);
+        } catch (err) {
+            console.error("Error calling chatbot API:", err.response?.data || err.message);
+
+            const response = {
+                text: "⚠️ Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu.",
+            };
+            await callSendAPI(sender_psid, response);
         }
     }
-    if (response) {
-        await callSendAPI(sender_psid, response);
-    }
 }
 
-//Handles messaging_postbacks events
 function handlePostback(sender_psid, received_postback) {
-
+    // xử lý postback nếu có
 }
-
-//Sends response messages via the send API
-
 
 async function callSendAPI(sender_psid, response) {
     const request_body = {
         recipient: { id: sender_psid },
-        message: response
+        message: response,
     };
 
     try {
@@ -94,9 +103,8 @@ async function callSendAPI(sender_psid, response) {
     }
 }
 
-
 module.exports = {
-    getHomePage: getHomePage,
-    getWebhook: getWebhook,
-    postWebhook: postWebhook
-}
+    getHomePage,
+    getWebhook,
+    postWebhook,
+};
